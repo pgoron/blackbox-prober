@@ -22,11 +22,14 @@ type AerospikeClusterInfo struct {
 	Config      AerospikeClientConfig
 }
 
-type AerospikeNamespacedClusterEndpoint struct {
+type AerospikeNamespacedEndpoint struct {
 	ClusterInfo *AerospikeClusterInfo
 	Namespace   string
-	Client      *as.Client
 	Logger      log.Logger
+}
+type AerospikeNamespacedClusterEndpoint struct {
+	AerospikeNamespacedEndpoint
+	Client *as.Client
 }
 
 func (e *AerospikeNamespacedClusterEndpoint) GetHash() string {

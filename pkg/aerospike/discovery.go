@@ -70,11 +70,12 @@ func (conf *AerospikeProbeConfig) generateNamespacedEndpointsFromEntry(logger lo
 	}
 
 	for namespace := range namespaces {
-		e := &AerospikeNamespacedClusterEndpoint{
+		namespacedEndpoint := AerospikeNamespacedEndpoint{
 			ClusterInfo: &clusterInfo,
 			Namespace:   namespace,
 			Logger:      log.With(logger, "endpoint_name", entry.Address),
 		}
+		e := &AerospikeNamespacedClusterEndpoint{AerospikeNamespacedEndpoint: namespacedEndpoint}
 		endpoints = append(endpoints, e)
 	}
 
