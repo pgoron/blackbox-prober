@@ -17,21 +17,24 @@ var clusterStats = promauto.NewGaugeVec(prometheus.GaugeOpts{
 	Help: "Cluster aggregated metrics from the go aerospike client",
 }, []string{"cluster", "probe_endpoint", "namespace", "name"})
 
+type AerospikeClusterInfo struct {
+	ClusterName string
+	Config      AerospikeClientConfig
+}
+
 type AerospikeNamespacedClusterEndpoint struct {
-	Name         string
-	ClusterName  string
-	Client       *as.Client
-	Config       AerospikeClientConfig
-	Logger       log.Logger
-	Namespace    string
+	ClusterInfo *AerospikeClusterInfo
+	Namespace   string
+	Client      *as.Client
+	Logger      log.Logger
 }
 
 func (e *AerospikeNamespacedClusterEndpoint) GetHash() string {
-	return fmt.Sprintf("%s/%s/ns:%s", e.ClusterName, e.Name, e.Namespace)
+	return fmt.Sprintf("%s/%s/ns:%s", e.ClusterInfo.ClusterName, e.ClusterInfo.ClusterName, e.Namespace)
 }
 
 func (e *AerospikeNamespacedClusterEndpoint) GetName() string {
-	return e.Name
+	return e.ClusterInfo.ClusterName
 }
 
 func (e *AerospikeNamespacedClusterEndpoint) IsCluster() bool {
@@ -48,7 +51,7 @@ func (e *AerospikeNamespacedClusterEndpoint) setMetricFromASStats(stats map[stri
 	if !ok {
 		return
 	}
-	clusterStats.WithLabelValues(e.ClusterName, e.GetName(), e.Namespace, key).Set(value)
+	clusterStats.WithLabelValues(e.ClusterInfo.ClusterName, e.GetName(), e.Namespace, key).Set(value)
 }
 
 func (e *AerospikeNamespacedClusterEndpoint) refreshMetrics() {
@@ -74,32 +77,32 @@ func (e *AerospikeNamespacedClusterEndpoint) refreshMetrics() {
 
 func (e *AerospikeNamespacedClusterEndpoint) Connect() error {
 	clientPolicy := as.NewClientPolicy()
-	clientPolicy.ConnectionQueueSize = e.Config.genericConfig.ConnectionQueueSize
-	clientPolicy.OpeningConnectionThreshold = e.Config.genericConfig.OpeningConnectionThreshold
-	clientPolicy.MinConnectionsPerNode = e.Config.genericConfig.MinConnectionsPerNode
-	clientPolicy.TendInterval = e.Config.genericConfig.TendInterval
+	clientPolicy.ConnectionQueueSize = e.ClusterInfo.Config.genericConfig.ConnectionQueueSize
+	clientPolicy.OpeningConnectionThreshold = e.ClusterInfo.Config.genericConfig.OpeningConnectionThreshold
+	clientPolicy.MinConnectionsPerNode = e.ClusterInfo.Config.genericConfig.MinConnectionsPerNode
+	clientPolicy.TendInterval = e.ClusterInfo.Config.genericConfig.TendInterval
 
-	if e.Config.tlsEnabled {
+	if e.ClusterInfo.Config.tlsEnabled {
 		// Setup TLS Config
 		tlsConfig := &tls.Config{
-			InsecureSkipVerify:       e.Config.genericConfig.TLSSkipVerify,
+			InsecureSkipVerify:       e.ClusterInfo.Config.genericConfig.TLSSkipVerify,
 			PreferServerCipherSuites: true,
 		}
 		clientPolicy.TlsConfig = tlsConfig
 	}
 
-	if e.Config.authEnabled {
-		if e.Config.genericConfig.AuthExternal {
+	if e.ClusterInfo.Config.authEnabled {
+		if e.ClusterInfo.Config.genericConfig.AuthExternal {
 			clientPolicy.AuthMode = as.AuthModeExternal
 		} else {
 			clientPolicy.AuthMode = as.AuthModeInternal
 		}
 
-		clientPolicy.User = e.Config.username
-		clientPolicy.Password = e.Config.password
+		clientPolicy.User = e.ClusterInfo.Config.username
+		clientPolicy.Password = e.ClusterInfo.Config.password
 	}
 
-	client, err := as.NewClientWithPolicyAndHost(clientPolicy, &e.Config.host)
+	client, err := as.NewClientWithPolicyAndHost(clientPolicy, &e.ClusterInfo.Config.host)
 	if err != nil {
 		return err
 	}
