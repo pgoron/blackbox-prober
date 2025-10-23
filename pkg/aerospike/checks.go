@@ -45,6 +45,12 @@ var durabilityCorruptedItems = promauto.NewGaugeVec(prometheus.GaugeOpts{
 	Help: "Total number of items found to be corrupted for durability",
 }, []string{"namespace", "cluster", "probe_endpoint"})
 
+var availability = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	Name: ASSuffix + "_availability",
+	Help: "Total number of items expected for durability",
+}, []string{"namespace", "cluster", "probe_endpoint"})
+
+
 // getWriteNode find the node against which the write will be made
 func getWriteNode(c *as.Client, policy *as.WritePolicy, key *as.Key) (*as.Node, error) {
 	partition, err := as.PartitionForWrite(c.Cluster(), &policy.BasePolicy, key)
@@ -83,7 +89,7 @@ func hash(str string) string {
 }
 
 func LatencyCheck(p topology.ProbeableEndpoint) error {
-	e, ok := p.(*AerospikeEndpoint)
+	e, ok := p.(*AerospikeNamespacedClusterEndpoint)
 	if !ok {
 		return fmt.Errorf("error: given endpoint is not an aerospike endpoint")
 	}
@@ -171,7 +177,7 @@ func LatencyCheck(p topology.ProbeableEndpoint) error {
 }
 
 func DurabilityPrepare(p topology.ProbeableEndpoint) error {
-	e, ok := p.(*AerospikeEndpoint)
+	e, ok := p.(*AerospikeNamespacedClusterEndpoint)
 	if !ok {
 		return fmt.Errorf("error: given endpoint is not an aerospike endpoint")
 	}
@@ -234,7 +240,7 @@ func DurabilityPrepare(p topology.ProbeableEndpoint) error {
 }
 
 func DurabilityCheck(p topology.ProbeableEndpoint) error {
-	e, ok := p.(*AerospikeEndpoint)
+	e, ok := p.(*AerospikeNamespacedClusterEndpoint)
 	if !ok {
 		return fmt.Errorf("error: given endpoint is not an aerospike endpoint")
 	}
@@ -274,4 +280,9 @@ func DurabilityCheck(p topology.ProbeableEndpoint) error {
 	durabilityFoundItems.WithLabelValues(e.Namespace, e.ClusterName, e.GetName()).Set(total_found_items)
 	durabilityCorruptedItems.WithLabelValues(e.Namespace, e.ClusterName, e.GetName()).Set(total_corrupted_items)
 	return nil
+}
+
+
+func AvailabilityCheck(p topology.ProbeableEndpoint) error {
+	return fmt.Errorf("Not Implemented")
 }
