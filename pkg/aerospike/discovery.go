@@ -15,7 +15,7 @@ import (
 	"github.com/go-kit/log/level"
 )
 
-func (conf *AerospikeProbeConfig) generateNamespacedEndpointsFromEntry(logger log.Logger, entry discovery.ServiceEntry) ([]*AerospikeEndpoint, error) {
+func (conf *AerospikeProbeConfig) generateNamespacedEndpointsFromEntry(logger log.Logger, entry discovery.ServiceEntry) ([]*AerospikeNamespacedClusterEndpoint, error) {
 	authEnabled := conf.AerospikeEndpointConfig.AuthEnabled
 	var (
 		username    string
@@ -50,12 +50,11 @@ func (conf *AerospikeProbeConfig) generateNamespacedEndpointsFromEntry(logger lo
 
 	namespaces := conf.getNamespacesFromEntry(logger, entry)
 
-	var endpoints []*AerospikeEndpoint
+	var endpoints []*AerospikeNamespacedClusterEndpoint
 	for namespace := range namespaces {
-		e := &AerospikeEndpoint{Name: clusterName,
+		e := &AerospikeNamespacedClusterEndpoint{Name: clusterName,
 			ClusterName:  clusterName,
 			Namespace:    namespace,
-			ClusterLevel: true,
 			Config: AerospikeClientConfig{
 				// auth
 				authEnabled: authEnabled,

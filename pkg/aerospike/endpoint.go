@@ -17,9 +17,8 @@ var clusterStats = promauto.NewGaugeVec(prometheus.GaugeOpts{
 	Help: "Cluster aggregated metrics from the go aerospike client",
 }, []string{"cluster", "probe_endpoint", "namespace", "name"})
 
-type AerospikeEndpoint struct {
+type AerospikeNamespacedClusterEndpoint struct {
 	Name         string
-	ClusterLevel bool
 	ClusterName  string
 	Client       *as.Client
 	Config       AerospikeClientConfig
@@ -27,19 +26,19 @@ type AerospikeEndpoint struct {
 	Namespace    string
 }
 
-func (e *AerospikeEndpoint) GetHash() string {
+func (e *AerospikeNamespacedClusterEndpoint) GetHash() string {
 	return fmt.Sprintf("%s/%s/ns:%s", e.ClusterName, e.Name, e.Namespace)
 }
 
-func (e *AerospikeEndpoint) GetName() string {
+func (e *AerospikeNamespacedClusterEndpoint) GetName() string {
 	return e.Name
 }
 
-func (e *AerospikeEndpoint) IsCluster() bool {
-	return e.ClusterLevel
+func (e *AerospikeNamespacedClusterEndpoint) IsCluster() bool {
+	return true
 }
 
-func (e *AerospikeEndpoint) setMetricFromASStats(stats map[string]interface{}, key string) {
+func (e *AerospikeNamespacedClusterEndpoint) setMetricFromASStats(stats map[string]interface{}, key string) {
 	val, ok := stats[key]
 	if !ok {
 		return
@@ -52,7 +51,7 @@ func (e *AerospikeEndpoint) setMetricFromASStats(stats map[string]interface{}, k
 	clusterStats.WithLabelValues(e.ClusterName, e.GetName(), e.Namespace, key).Set(value)
 }
 
-func (e *AerospikeEndpoint) refreshMetrics() {
+func (e *AerospikeNamespacedClusterEndpoint) refreshMetrics() {
 	stats, err := e.Client.Stats()
 	cluster_stats := stats["cluster-aggregated-stats"].(map[string]interface{})
 	if err != nil {
@@ -73,7 +72,7 @@ func (e *AerospikeEndpoint) refreshMetrics() {
 	e.setMetricFromASStats(cluster_stats, "tends-failed")
 }
 
-func (e *AerospikeEndpoint) Connect() error {
+func (e *AerospikeNamespacedClusterEndpoint) Connect() error {
 	clientPolicy := as.NewClientPolicy()
 	clientPolicy.ConnectionQueueSize = e.Config.genericConfig.ConnectionQueueSize
 	clientPolicy.OpeningConnectionThreshold = e.Config.genericConfig.OpeningConnectionThreshold
@@ -109,12 +108,12 @@ func (e *AerospikeEndpoint) Connect() error {
 	return nil
 }
 
-func (e *AerospikeEndpoint) Refresh() error {
+func (e *AerospikeNamespacedClusterEndpoint) Refresh() error {
 	e.refreshMetrics()
 	return nil
 }
 
-func (e *AerospikeEndpoint) Close() error {
+func (e *AerospikeNamespacedClusterEndpoint) Close() error {
 	if e != nil && e.Client != nil {
 		e.Client.Close()
 	}
