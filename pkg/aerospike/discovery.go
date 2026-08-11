@@ -3,6 +3,7 @@ package aerospike
 import (
 	"fmt"
 	"os"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -106,13 +107,22 @@ func (conf AerospikeProbeConfig) getNamespacesFromEntry(logger log.Logger, entry
 	return namespaces
 }
 
+func (conf *AerospikeProbeConfig) shouldSkipNamespace(namespace, cluster string) bool {
+	notReadyNamespaces, found := conf.DiscoveryConfig.NotReadyNamespaces[cluster]
+	return found && slices.Contains(notReadyNamespaces, namespace)
+}
+
 // generateEndpointFromEntry builds the single endpoint that covers a whole cluster.
 // TODO: we should use a consul dns seed
 func (conf *AerospikeProbeConfig) generateEndpointFromEntry(logger log.Logger, entry discovery.ServiceEntry, clusterConfig *AerospikeClientConfig) *AerospikeEndpoint {
 	namespaceSet := conf.getNamespacesFromEntry(logger, entry)
 	namespaces := make([]string, 0, len(namespaceSet))
 	for namespace := range namespaceSet {
-		namespaces = append(namespaces, namespace)
+		if conf.shouldSkipNamespace(namespace, clusterConfig.clusterName) {
+			level.Info(logger).Log("msg", fmt.Sprintf("Skipping namespace %s on cluster %s as it is not ready for monitoring.", namespace, clusterConfig.clusterName))
+		} else {
+			namespaces = append(namespaces, namespace)
+		}
 	}
 	// Keep sorted so GetHash is stable regardless of map iteration order.
 	sort.Strings(namespaces)
